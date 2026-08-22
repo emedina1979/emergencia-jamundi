@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { parsearRespuesta } from '@/lib/fetch-json';
 
 export function PanelAprobacion({ solicitudId }: { solicitudId: string }) {
   const router = useRouter();
@@ -18,8 +19,7 @@ export function PanelAprobacion({ solicitudId }: { solicitudId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aprobado, observaciones: observaciones || undefined }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo registrar la decisión');
+      await parsearRespuesta(res);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { parsearRespuesta } from '@/lib/fetch-json';
 
 export function GaleriaEvidencias({ solicitudId }: { solicitudId: string }) {
   const [evidencias, setEvidencias] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(`/api/inspeccion/${solicitudId}/evidencias`)
-      .then((r) => r.json())
-      .then((j) => setEvidencias(j.evidencias ?? []));
+      .then((r) => parsearRespuesta<{ evidencias: any[] }>(r))
+      .then((j) => setEvidencias(j.evidencias ?? []))
+      .catch((e) => console.error('No se pudieron cargar las evidencias:', e));
   }, [solicitudId]);
 
   if (evidencias.length === 0) return null;

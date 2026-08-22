@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { elementosPara, ELEMENTOS_LABEL } from '@/lib/elementos';
+import { parsearRespuesta } from '@/lib/fetch-json';
 
 type NivelDano = 'leve' | 'moderado' | 'severo' | '';
 
@@ -51,8 +52,7 @@ export function FormularioEvaluacion({ solicitud }: { solicitud: any }) {
           })),
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo guardar la evaluación');
+      const json = await parsearRespuesta<any>(res);
       setResultado(json);
       router.refresh();
     } catch (e) {

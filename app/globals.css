@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+.btn-primario {
+  @apply w-full rounded-xl bg-alcaldia-600 px-4 py-3 text-center font-semibold text-white shadow-sm active:bg-alcaldia-700 disabled:opacity-50;
+}
+
+.btn-secundario {
+  @apply w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-semibold text-gray-700;
+}
+
+.campo-input {
+  @apply w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:border-alcaldia-600 focus:outline-none focus:ring-2 focus:ring-alcaldia-600/30;
+}
+
+.campo-label {
+  @apply mb-1 block text-sm font-medium text-gray-700;
+}
+
+.campo-error {
+  @apply mt-1 text-sm text-red-600;
+}

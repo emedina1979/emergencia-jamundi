@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 
-export default function PaginaLogin() {
+function FormularioLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,5 +44,13 @@ export default function PaginaLogin() {
         </button>
       </form>
     </main>
+  );
+}
+
+export default function PaginaLogin() {
+  return (
+    <Suspense fallback={<div className="p-6">Cargando…</div>}>
+      <FormularioLogin />
+    </Suspense>
   );
 }

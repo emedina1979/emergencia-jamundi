@@ -9,11 +9,18 @@ export function supabaseServer() {
   const cookieStore = cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY en el entorno');
+  const faltantes = [
+    !url && 'NEXT_PUBLIC_SUPABASE_URL',
+    !anonKey && 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  ].filter(Boolean);
+  if (faltantes.length > 0) {
+    throw new Error(
+      `Falta configurar en el entorno: ${faltantes.join(', ')}. ` +
+      'En Vercel: Project Settings → Environment Variables (y volver a desplegar). En local: .env.local.'
+    );
   }
 
-  return createServerClient(url, anonKey, {
+  return createServerClient(url!, anonKey!, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;

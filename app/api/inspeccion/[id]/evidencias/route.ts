@@ -3,6 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requiereStaff } from '@/lib/auth-staff';
 import { manejarRuta } from '@/lib/api-response';
 
+// requiereStaff() lee cookies() (sesión del usuario) para verificar el rol —
+// Next.js no puede pre-renderizarla estáticamente en build.
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/inspeccion/[id]/evidencias
  * El bucket de evidencias es privado (fotos/documentos de personas afectadas).

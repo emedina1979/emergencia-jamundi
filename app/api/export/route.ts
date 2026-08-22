@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
 import { manejarRuta } from '@/lib/api-response';
 
+// Esta ruta lee cookies() (sesión del usuario, vía supabaseServer) para
+// aplicar RLS — Next.js no puede pre-renderizarla estáticamente en build.
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/export?estado=aprobada
  * Versión "en vivo" del mismo export que hace scripts/export_ungrd.ts, para

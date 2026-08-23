@@ -23,7 +23,14 @@ function FormularioLogin() {
       setError('Correo o contraseña incorrectos');
       return;
     }
+    // push() solo cambia la ruta; si Next.js ya tenía cacheado el árbol de
+    // Server Components de /inspeccion (ej. por un prefetch antes del login,
+    // o el redirect que hizo el middleware la primera vez sin sesión),
+    // refresh() lo invalida para que se vuelva a renderizar con la cookie de
+    // sesión recién creada por signInWithPassword — si no, puede quedarse
+    // mostrando el estado "no autenticado" hasta un reload manual.
     router.push(params.get('redirect') ?? '/inspeccion');
+    router.refresh();
   }
 
   return (

@@ -3,12 +3,25 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { solicitudCompletaSchema } from '@/lib/validations';
 import { manejarRuta } from '@/lib/api-response';
 
+// Vercel (Hobby) corta la función a los 10s. Si una sola llamada a Supabase
+// se cuelga (proyecto pausado/despertando, DNS lento, etc.), preferimos que
+// truene ESA llamada puntual a los 8s con un mensaje claro, en vez de dejar
+// que la plataforma mate la función entera sin decir cuál de las ~5
+// llamadas secuenciales fue la que se colgó.
+const TIMEOUT_MS = 8000;
+const señalTimeout = () => AbortSignal.timeout(TIMEOUT_MS);
+
+function log(operacion: string, tabla: string) {
+  console.log(`[api/solicitudes] → ${operacion} sobre "${tabla}" (destino: ${process.env.NEXT_PUBLIC_SUPABASE_URL})`);
+}
+
 async function generarCodigoRadicado(supabase: ReturnType<typeof supabaseAdmin>) {
   const prefijo = process.env.CODIGO_RADICADO_PREFIJO ?? 'JAM';
   // Usa la secuencia atómica de Postgres (siguiente_codigo_radicado en 01_schema.sql)
   // en vez de contar filas desde el cliente, que sí sería vulnerable a condiciones
   // de carrera con muchas familias enviando el formulario al mismo tiempo.
-  const { data, error } = await supabase.rpc('siguiente_codigo_radicado', { prefijo });
+  log('rpc siguiente_codigo_radicado', 'solicitudes_radicado_seq');
+  const { data, error } = await supabase.rpc('siguiente_codigo_radicado', { prefijo }).abortSignal(señalTimeout());
   if (error) throw error;
   return data as string;
 }
@@ -27,20 +40,24 @@ export async function POST(req: NextRequest) {
     // Un beneficiario no puede tener dos solicitudes activas — la restricción real
     // vive en la base (solicitudes_beneficiario_activa_uk); aquí solo damos un
     // mensaje claro en vez de dejar burbujear el error 23505 de Postgres.
+    log('select (buscar por numero_documento)', 'beneficiarios');
     const { data: beneficiarioExistente } = await supabase
       .from('beneficiarios')
       .select('id')
       .eq('numero_documento', identificacion.numero_documento)
+      .abortSignal(señalTimeout())
       .maybeSingle();
 
     let beneficiarioId = beneficiarioExistente?.id as string | undefined;
 
     if (beneficiarioId) {
+      log('select (solicitud activa del beneficiario)', 'solicitudes');
       const { data: solicitudActiva } = await supabase
         .from('solicitudes')
         .select('codigo_radicado, estado')
         .eq('beneficiario_id', beneficiarioId)
         .neq('estado', 'rechazada')
+        .abortSignal(señalTimeout())
         .maybeSingle();
       if (solicitudActiva) {
         return NextResponse.json(
@@ -49,6 +66,7 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
+      log('insert', 'beneficiarios');
       const { data: nuevoBeneficiario, error: errBeneficiario } = await supabase
         .from('beneficiarios')
         .insert({
@@ -61,11 +79,13 @@ export async function POST(req: NextRequest) {
           predio_fuera_riesgo: identificacion.predio_fuera_riesgo === 'si',
         })
         .select('id')
+        .abortSignal(señalTimeout())
         .single();
       if (errBeneficiario) return NextResponse.json({ error: errBeneficiario.message }, { status: 500 });
       beneficiarioId = nuevoBeneficiario.id;
     }
 
+    log('insert', 'viviendas');
     const { data: vivienda, error: errVivienda } = await supabase
       .from('viviendas')
       .insert({
@@ -81,6 +101,7 @@ export async function POST(req: NextRequest) {
         material_cubierta: construccion.material_cubierta,
       })
       .select('id')
+      .abortSignal(señalTimeout())
       .single();
     if (errVivienda) return NextResponse.json({ error: errVivienda.message }, { status: 500 });
 
@@ -88,10 +109,11 @@ export async function POST(req: NextRequest) {
     try {
       codigoRadicado = await generarCodigoRadicado(supabase);
     } catch (e) {
-      console.error('[api/solicitudes] error generando código de radicado:', e);
-      return NextResponse.json({ error: 'No se pudo generar el código de radicado' }, { status: 500 });
+      console.error('[api/solicitudes] error generando código de radicado:', e, (e as any)?.cause);
+      return NextResponse.json({ error: `No se pudo generar el código de radicado: ${(e as Error).message}` }, { status: 500 });
     }
 
+    log('insert', 'solicitudes');
     const { data: solicitud, error: errSolicitud } = await supabase
       .from('solicitudes')
       .insert({
@@ -103,6 +125,7 @@ export async function POST(req: NextRequest) {
         declaracion_veracidad_aceptada: declaracion.declaracion_veracidad_aceptada,
       })
       .select('id, codigo_radicado')
+      .abortSignal(señalTimeout())
       .single();
     if (errSolicitud) return NextResponse.json({ error: errSolicitud.message }, { status: 500 });
 
